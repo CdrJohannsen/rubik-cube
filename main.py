@@ -3,13 +3,14 @@
 Main file
 """
 from cube import Cube
+from solver import solve
 
 
 def main() -> None:
     """main function"""
     cube = Cube()
     cube.mix()
-    print(cube)
+    solve(cube)
 
 
 if __name__ == "__main__":
