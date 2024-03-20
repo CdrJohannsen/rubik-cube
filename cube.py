@@ -1,6 +1,7 @@
 """
 Contains the code for the internal workings of the cube
 """
+
 from enum import Enum
 from random import choice
 from typing import Callable
@@ -11,6 +12,7 @@ class Tile(Enum):
     Represents a single tile of the cube
     the value is the ANSI color code for this color
     """
+
     RED = "\x1b[48;5;196m"
     GREEN = "\x1b[48;5;118m"
     BLUE = "\x1b[48;5;27m"
@@ -23,8 +25,23 @@ class Tile(Enum):
         return f"{self.value}  \x1b[0m"
 
 
+class Piece:
+    def __init__(self, *sides) -> None:
+        self.sides = sides
+        self.corner = len(sides) == 3
+
+    def __str__(self) -> str:
+        """Makes it so that e.g print() will show something prettier"""
+        return "".join([repr(side) for side in self.sides])
+
+    def __contains__(self, searched) -> bool:
+        """Returns True if this piece contains the searched Tile"""
+        return searched in self.sides
+
+
 class Side:
     """One side of the cube"""
+
     def __init__(self, tile) -> None:
         self.base = tile
         self.tiles: list[list[Tile]] = [[tile] * 3, [tile] * 3, [tile] * 3]
@@ -39,6 +56,34 @@ class Side:
                 string += f"{tile.value:>3}  \x1b[0m"
             string += "\n"
         return string[:-1]
+
+    def __contains__(self, searched) -> bool:
+        for row in self.tiles:
+            if searched in row:
+                return True
+        return False
+
+    def index(self, tile: Tile) -> tuple[int, int]:
+        """Return the index of a tile as (y,x)"""
+        for i, row in enumerate(self.tiles):
+            if tile in row:
+                return (i, row.index(tile))
+        raise ValueError(f"{tile.name} is not on this Side")
+
+    def get_tile(self, index: tuple[int, int]) -> Tile:
+        return self.tiles[index[0]][index[1]]
+
+    def get_piece(self, index: tuple[int, int]):
+        sides = [self.get_tile(index)]
+        if index[1] == 0:
+            sides.append(self.left_g()[index[0]])
+        if index[0] == 0:
+            sides.append(self.top_g()[2 - index[1]])
+        if index[1] == 2:
+            sides.append(self.right_g()[2 - index[0]])
+        if index[0] == 2:
+            sides.append(self.bottom_g()[index[1]])
+        return Piece(*sides)
 
     def get_colors(self) -> list[str]:
         """Returns a list of colored spaces to represent its content"""
