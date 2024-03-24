@@ -21,22 +21,25 @@ class Tile(Enum):
     ORANGE = "\x1b[48;5;208m"
     UNSET = "\x1b[48;5;239m"
 
-    def __repr__(self):
+    def __str__(self):
         return f"{self.value}  \x1b[0m"
 
 
 class Piece:
     def __init__(self, *sides) -> None:
-        self.sides = sides
+        self.sides = set(sides)
         self.corner = len(sides) == 3
 
     def __str__(self) -> str:
         """Makes it so that e.g print() will show something prettier"""
-        return "".join([repr(side) for side in self.sides])
+        return "".join([str(side) for side in self.sides])
 
     def __contains__(self, searched) -> bool:
         """Returns True if this piece contains the searched Tile"""
         return searched in self.sides
+
+    def __eq__(self, value) -> bool:
+        return self.sides == value.sides
 
 
 class Side:
@@ -84,6 +87,13 @@ class Side:
         if index[0] == 2:
             sides.append(self.bottom_g()[index[1]])
         return Piece(*sides)
+
+    def search_piece(self, piece: Piece) -> tuple[int, int] | None:
+        for i in range(3):
+            for j in range(3):
+                if self.get_piece((i, j)) == piece:
+                    return (i, j)
+        return None
 
     def get_colors(self) -> list[str]:
         """Returns a list of colored spaces to represent its content"""
@@ -216,14 +226,8 @@ class Cube:
         self.sides[4] = Side(Tile.WHITE)
         self.sides[5] = Side(Tile.YELLOW)
 
-        self.layout = {
-            "left": self.sides[0],
-            "right": self.sides[1],
-            "back": self.sides[2],
-            "front": self.sides[3],
-            "down": self.sides[4],
-            "up": self.sides[5],
-        }
+        self.layout = dict()
+        self.reset_orientation()
 
         self.sides[0].set_top_n(*self.sides[2].get_gs("left"))
         self.sides[0].set_left_n(*self.sides[4].get_gs("left"))
@@ -273,6 +277,15 @@ class Cube:
         for i in range(3):
             out += f"{' '*6}{down[i]}{end}"
         return out
+
+    def reset_orientation(self):
+        """Reset the orientation of the cube"""
+        self.layout["left"] = self.sides[0]
+        self.layout["right"] = self.sides[1]
+        self.layout["back"] = self.sides[2]
+        self.layout["front"] = self.sides[3]
+        self.layout["down"] = self.sides[4]
+        self.layout["up"] = self.sides[5]
 
     def U(self):
         """Rotate the top side clockwise"""
@@ -337,6 +350,13 @@ class Cube:
         self.layout["back"] = self.layout["left"]
         self.layout["left"] = self.layout["front"]
         self.layout["front"] = tmp_side
+
+    def search_piece(self, piece: Piece) -> tuple[str, int, int]:
+        for i, side in self.layout.items():
+            index = side.search_piece(piece)
+            if index is not None:
+                return (i, *index)
+        raise ValueError(f"{piece} does not exist")
 
     def mix(self, n_moves: int = 12):
         """Turn a random side of the cube n_moves times"""
